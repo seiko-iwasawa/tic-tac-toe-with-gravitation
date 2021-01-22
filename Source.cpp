@@ -27,13 +27,44 @@ using namespace std;
 const int N = 6;
 const int M = 7;
 
-char cur_move_type;
+bool have_win_streak;
+vector<int> streak_sum;
+vector<int> streak[N][M];
+
+void build_streak(int i, int j, int dx, int dy) {
+  const int WIN_STREAK = 4;
+  for (int k = 0, x = i, y = j; k < WIN_STREAK;
+       ++k, x = (x + dx + N) % N, y = (y + dy + M) % M) {
+    streak[x][y].push_back(streak_sum.size());
+  }
+  streak_sum.push_back(0);
+}
+
+void build_streak(int i, int j) {
+  const int DX[4] = {-1, 0, +1, +1};
+  const int DY[4] = {+1, +1, +1, 0};
+  for (int k = 0; k < 4; ++k) {
+    build_streak(i, j, DX[k], DY[k]);
+  }
+}
+
+void build_streak() {
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      build_streak(i, j);
+    }
+  }
+}
+
+void prepare() { build_streak(); }
+
 char field[N][M];
-vector<pair<int, int>> history;
+vector<vector<int>> history;
 
 void init_field() {
+  have_win_streak = false;
+  fill(streak_sum.begin(), streak_sum.end(), 0);
   history.clear();
-  cur_move_type = 'X';
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < M; ++j) {
       field[i][j] = '.';
@@ -62,71 +93,47 @@ void print_position() {
   print_field();
 }
 
-int find_streak(int i, int j, int dx, int dy) {
-  int res = 0;
-  int x = i, y = j;
-  while (field[x][y] == field[i][j]) {
-    ++res;
-    x = (x + dx + N) % N;
-    y = (y + dy + M) % M;
-  }
-  return res;
-}
+bool is_filled() { return history.size() == N * M; }
 
-bool find_win_streak(int i, int j) {
-  if (field[i][j] == '.') {
-    return false;
-  }
-  const int C = 4;
-  const int DX[4] = {-1, 0, +1, +1};
-  const int DY[4] = {+1, +1, +1, 0};
-  for (int k = 0; k < 4; ++k) {
-    if (find_streak(i, j, DX[k], DY[k]) >= C) {
-      return true;
+bool is_end() { return is_filled() || have_win_streak; }
+
+char get_move_type() { return history.size() & 1 ? 'O' : 'X'; }
+
+int get_streak_impact(char cell) { return cell == 'O' ? -1 : +1; }
+
+void add(int i, int j, int d) {
+  for (int ind : streak[i][j]) {
+    if (streak_sum[ind] == -4 || streak_sum[ind] == 4) {
+      have_win_streak = false;
+    }
+    streak_sum[ind] += d;
+    if (streak_sum[ind] == -4 || streak_sum[ind] == 4) {
+      have_win_streak = true;
     }
   }
-  return false;
 }
 
-char find_win_streak() {
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < M; ++j) {
-      if (find_win_streak(i, j)) {
-        return field[i][j];
-      }
-    }
-  }
-  return '.';
-}
-
-bool is_filled() {
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < M; ++j) {
-      if (field[i][j] == '.') {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool is_end() { return is_filled() || find_win_streak() != '.'; }
-
-void move(int j) {
+int get_move_place(int j) {
   int i = N - 1;
   while (field[i][j] != '.') {
     --i;
   }
-  field[i][j] = cur_move_type;
-  cur_move_type = (cur_move_type == 'X' ? 'O' : 'X');
+  return i;
+}
+
+void move(int j) {
+  int i = get_move_place(j);
+  field[i][j] = get_move_type();
+  add(i, j, get_streak_impact(field[i][j]));
   history.push_back({i, j});
 }
 
 void undo() {
-  auto last_move = history.back();
+  int i = history.back()[0];
+  int j = history.back()[1];
   history.pop_back();
-  cur_move_type = (cur_move_type == 'X' ? 'O' : 'X');
-  field[last_move.first][last_move.second] = '.';
+  add(i, j, -get_streak_impact(field[i][j]));
+  field[i][j] = '.';
 }
 
 void human_move() {
@@ -136,16 +143,23 @@ void human_move() {
   move(j);
 }
 
-pair<int, pair<int, int>> make_move(int depth, int alpha, int beta) {
+const int O_WIN = -1000;
+const int DRAW = 0;
+const int X_WIN = 1000;
+
+int get_x_win() { return X_WIN - history.size(); }
+int get_o_win() { return O_WIN + history.size(); }
+
+int make_move(int depth, int alpha, int beta) {
   if (is_end()) {
-    if (find_win_streak() == '.') {
-      return {0, {0, -1}};
+    if (have_win_streak) {
+      return get_move_type() == 'O' ? get_x_win() : get_o_win();
     } else {
-      return {-1, {0, -1}};
+      return DRAW;
     }
   }
-  if (depth == 0 || alpha == beta) {
-    return {0, {0, 1}};
+  if (depth == 0) {
+    return DRAW;
   }
   vector<int> options;
   for (int j = 0; j < M; ++j) {
@@ -153,48 +167,113 @@ pair<int, pair<int, int>> make_move(int depth, int alpha, int beta) {
       move(j);
       if (is_end()) {
         undo();
-        return {1, {1, j}};
+        return get_move_type() == 'X' ? get_x_win() : get_o_win();
+      } else {
+        undo();
+        options.push_back(j);
       }
-      undo();
-      options.push_back(j);
     }
   }
   random_shuffle(options.begin(), options.end());
-  pair<int, pair<int, int>> b = {-2, {-1, -1}};
-  for (int j : options) {
-    move(j);
-    auto cur = make_move(depth - 1, alpha, -alpha);
-    if (b.first < -cur.first) {
-      b = {-cur.first, {cur.second.first + 1, j}};
-    } else if (b.first == -cur.first && b.second.first < cur.second.first + 1) {
-      b = {-cur.first, {cur.second.first + 1, j}};
+  if (get_move_type() == 'X') {
+    int res = alpha;
+    for (int j : options) {
+      move(j);
+      int nxt = make_move(depth - 1, alpha, beta);
+      undo();
+      res = max(res, nxt);
+      alpha = max(alpha, res);
+      if (res >= beta) {
+        break;
+      }
     }
-    undo();
-    alpha = max(alpha, b.first);
-    if (b.first >= beta) {
-      break;
+    return res;
+  } else {
+    int res = beta;
+    for (int j : options) {
+      move(j);
+      int nxt = make_move(depth - 1, alpha, beta);
+      undo();
+      res = min(res, nxt);
+      beta = min(beta, res);
+      if (res <= alpha) {
+        break;
+      }
     }
+    return res;
   }
-  return b;
 }
 
 int get_good_depth() {
-  int cnt = 0;
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < M; ++j) {
-      cnt += (field[i][j] != '.');
-    }
-  }
-  if (cnt <= 20) {
-	  return 20;
-  }
-  else {
-	  return N * M;
+  if (history.size() <= 6) {
+    return 6;
+  } else if (history.size() <= 8){
+	  return 7;
+  } else if (history.size() <= 10){
+	  return 8;
+  } else if (history.size() <= 15){
+	  return 10;
+  } else {
+    return N * M;
   }
 }
 
+int make_move() {
+  if (history.empty()) {
+    return 0;
+  }
+  vector<int> options;
+  for (int j = 0; j < M; ++j) {
+    if (field[0][j] == '.') {
+      move(j);
+      if (is_end()) {
+        undo();
+        return j;
+      } else {
+        undo();
+        options.push_back(j);
+      }
+    }
+  }
+  random_shuffle(options.begin(), options.end());
+  int res, bj;
+  if (get_move_type() == 'X') {
+    res = O_WIN;
+    bj = options[0];
+    for (int j : options) {
+      move(j);
+      int nxt = make_move(get_good_depth(), O_WIN, X_WIN);
+      undo();
+      if (res < nxt) {
+        res = nxt;
+        bj = j;
+      }
+      if (res > DRAW) {
+        break;
+      }
+    }
+  } else {
+    res = X_WIN;
+    bj = options[0];
+    for (int j : options) {
+      move(j);
+      int nxt = make_move(get_good_depth(), O_WIN, X_WIN);
+      undo();
+      if (res > nxt) {
+        res = nxt;
+        bj = j;
+      }
+      if (res < DRAW) {
+        break;
+      }
+    }
+  }
+  cout << "MOVE RATE: " << res << '\n';
+  return bj;
+}
+
 void computer_move() {
-  int j = make_move(get_good_depth(), -1, 1).second.second;
+  int j = make_move();
   cout << "Computer move: " << j + 1 << '\n';
   move(j);
 }
@@ -217,12 +296,12 @@ void run() {
     cur_player ^= true;
     print_position();
   }
-  if (find_win_streak() == 'X') {
-    cout << "First player won.\n";
-  } else if (find_win_streak() == 'O') {
-    cout << "Second player won.\n";
-  } else {
+  if (!have_win_streak) {
     cout << "Draw.\n";
+  } else if (get_move_type() == 'O') {
+    cout << "First player won.\n";
+  } else {
+    cout << "Second player won.\n";
   }
 }
 
@@ -230,6 +309,7 @@ signed main() {
   ios_base::sync_with_stdio(false);
   cin.tie(NULL);
   cout.tie(NULL);
+  prepare();
   while (true) {
     run();
   }
