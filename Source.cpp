@@ -24,9 +24,12 @@ using namespace std;
 #define ALL(c) c.begin(), c.end()
 #define SZ(c) (int)c.size()
 
+typedef unsigned long long ull;
+
 const int N = 6;
 const int M = 7;
 
+ull Xmask, Omask;
 bool have_win_streak;
 vector<int> streak_sum;
 vector<int> streak[N][M];
@@ -65,6 +68,8 @@ void init_field() {
   have_win_streak = false;
   fill(streak_sum.begin(), streak_sum.end(), 0);
   history.clear();
+  Xmask = 0;
+  Omask = 0;
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < M; ++j) {
       field[i][j] = '.';
@@ -124,6 +129,11 @@ int get_move_place(int j) {
 void move(int j) {
   int i = get_move_place(j);
   field[i][j] = get_move_type();
+  if (field[i][j] == 'X') {
+    Xmask ^= 1LL << i * M + j;
+  } else {
+    Omask ^= 1LL << i * M + j;
+  }
   add(i, j, get_streak_impact(field[i][j]));
   history.push_back({i, j});
 }
@@ -132,6 +142,11 @@ void undo() {
   int i = history.back()[0];
   int j = history.back()[1];
   history.pop_back();
+  if (field[i][j] == 'X') {
+    Xmask ^= 1LL << i * M + j;
+  } else {
+    Omask ^= 1LL << i * M + j;
+  }
   add(i, j, -get_streak_impact(field[i][j]));
   field[i][j] = '.';
 }
@@ -150,6 +165,8 @@ const int X_WIN = 1000;
 int get_x_win() { return X_WIN - history.size(); }
 int get_o_win() { return O_WIN + history.size(); }
 
+map<pair<pair<ull, ull>, int>, int> mem;
+
 int make_move(int depth, int alpha, int beta) {
   if (is_end()) {
     if (have_win_streak) {
@@ -161,13 +178,17 @@ int make_move(int depth, int alpha, int beta) {
   if (depth == 0) {
     return DRAW;
   }
+  if (mem.count({{Xmask, Omask}, depth})) {
+    return mem[{{Xmask, Omask}, depth}];
+  }
+  int &mem_res = mem[{{Xmask, Omask}, depth}];
   vector<int> options;
   for (int j = 0; j < M; ++j) {
     if (field[0][j] == '.') {
       move(j);
       if (is_end()) {
         undo();
-        return get_move_type() == 'X' ? get_x_win() : get_o_win();
+        return mem_res = (get_move_type() == 'X' ? get_x_win() : get_o_win());
       } else {
         undo();
         options.push_back(j);
@@ -187,7 +208,7 @@ int make_move(int depth, int alpha, int beta) {
         break;
       }
     }
-    return res;
+    return mem_res = res;
   } else {
     int res = beta;
     for (int j : options) {
@@ -200,19 +221,19 @@ int make_move(int depth, int alpha, int beta) {
         break;
       }
     }
-    return res;
+    return mem_res = res;
   }
 }
 
 int get_good_depth() {
   if (history.size() <= 6) {
     return 6;
-  } else if (history.size() <= 8){
-	  return 7;
-  } else if (history.size() <= 10){
-	  return 8;
-  } else if (history.size() <= 15){
-	  return 10;
+  } else if (history.size() <= 8) {
+    return 7;
+  } else if (history.size() <= 10) {
+    return 8;
+  } else if (history.size() <= 15) {
+    return 10;
   } else {
     return N * M;
   }
