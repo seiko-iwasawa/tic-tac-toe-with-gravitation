@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include <ctime>
+
 using namespace std;
 
 #define MTEST() \
@@ -29,17 +31,19 @@ typedef unsigned long long ull;
 const int N = 6;
 const int M = 7;
 
+int rate_delta;
 bool have_win_streak;
-vector<int> streak_sum;
+vector<int> x_streak_sum, o_streak_sum;
 vector<int> streak[N][M];
 
 void build_streak(int i, int j, int dx, int dy) {
   const int WIN_STREAK = 4;
   for (int k = 0, x = i, y = j; k < WIN_STREAK;
        ++k, x = (x + dx + N) % N, y = (y + dy + M) % M) {
-    streak[x][y].push_back(streak_sum.size());
+    streak[x][y].push_back(x_streak_sum.size());
   }
-  streak_sum.push_back(0);
+  x_streak_sum.push_back(0);
+  o_streak_sum.push_back(0);
 }
 
 void build_streak(int i, int j) {
@@ -65,8 +69,10 @@ vector<vector<int>> history;
 
 void init_field() {
   have_win_streak = false;
-  fill(streak_sum.begin(), streak_sum.end(), 0);
+  fill(x_streak_sum.begin(), x_streak_sum.end(), 0);
+  fill(o_streak_sum.begin(), o_streak_sum.end(), 0);
   history.clear();
+  rate_delta = 0;
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < M; ++j) {
       field[i][j] = '.';
@@ -103,14 +109,50 @@ char get_move_type() { return history.size() & 1 ? 'O' : 'X'; }
 
 int get_streak_impact(char cell) { return cell == 'O' ? -1 : +1; }
 
-void add(int i, int j, int d) {
-  for (int ind : streak[i][j]) {
-    if (streak_sum[ind] == -4 || streak_sum[ind] == 4) {
-      have_win_streak = false;
+void add(int i, int j, int d, char move) {
+  if (move == 'X') {
+    for (int ind : streak[i][j]) {
+      if (x_streak_sum[ind] == 4) {
+        have_win_streak = false;
+      }
+      if (o_streak_sum[ind] == 0) {
+        rate_delta -= x_streak_sum[ind] * x_streak_sum[ind];
+      }
+      if (x_streak_sum[ind] == 0) {
+        rate_delta -= -o_streak_sum[ind] * o_streak_sum[ind];
+      }
+      x_streak_sum[ind] += d;
+      if (x_streak_sum[ind] == 0) {
+        rate_delta += -o_streak_sum[ind] * o_streak_sum[ind];
+      }
+      if (o_streak_sum[ind] == 0) {
+        rate_delta += x_streak_sum[ind] * x_streak_sum[ind];
+      }
+      if (x_streak_sum[ind] == 4) {
+        have_win_streak = true;
+      }
     }
-    streak_sum[ind] += d;
-    if (streak_sum[ind] == -4 || streak_sum[ind] == 4) {
-      have_win_streak = true;
+  } else {
+    for (int ind : streak[i][j]) {
+      if (o_streak_sum[ind] == 4) {
+        have_win_streak = false;
+      }
+      if (x_streak_sum[ind] == 0) {
+        rate_delta -= -o_streak_sum[ind] * o_streak_sum[ind];
+      }
+      if (o_streak_sum[ind] == 0) {
+        rate_delta -= x_streak_sum[ind] * x_streak_sum[ind];
+      }
+      o_streak_sum[ind] += d;
+      if (o_streak_sum[ind] == 0) {
+        rate_delta += x_streak_sum[ind] * x_streak_sum[ind];
+      }
+      if (x_streak_sum[ind] == 0) {
+        rate_delta += -o_streak_sum[ind] * o_streak_sum[ind];
+      }
+      if (o_streak_sum[ind] == 4) {
+        have_win_streak = true;
+      }
     }
   }
 }
@@ -126,7 +168,7 @@ int get_move_place(int j) {
 void move(int j) {
   int i = get_move_place(j);
   field[i][j] = get_move_type();
-  add(i, j, get_streak_impact(field[i][j]));
+  add(i, j, get_streak_impact(field[i][j]), field[i][j]);
   history.push_back({i, j});
 }
 
@@ -134,52 +176,61 @@ void undo() {
   int i = history.back()[0];
   int j = history.back()[1];
   history.pop_back();
-  add(i, j, -get_streak_impact(field[i][j]));
+  add(i, j, -get_streak_impact(field[i][j]), field[i][j]);
   field[i][j] = '.';
 }
 
 void human_move() {
+  cout << "Human move: ";
   int j;
   cin >> j;
   --j;
   move(j);
 }
 
-const int O_WIN = -1000;
+const int O_WIN = -1e9;
 const int DRAW = 0;
-const int X_WIN = 1000;
+const int X_WIN = 1e9;
 
-int get_x_win() { return X_WIN - history.size(); }
-int get_o_win() { return O_WIN + history.size(); }
-
-int make_move(int depth, int alpha, int beta) {
+int get_rate() {
   if (is_end()) {
     if (have_win_streak) {
-      return get_move_type() == 'O' ? get_x_win() : get_o_win();
+      if (get_move_type() == 'O') {
+        return X_WIN - history.size();
+      } else {
+        return O_WIN + history.size();
+      }
     } else {
       return DRAW;
     }
+  } else {
+    return DRAW + rate_delta;
   }
-  if (depth == 0) {
-    return DRAW;
+}
+
+int make_move(int depth, int alpha, int beta) {
+  if (is_end() || depth == 0) {
+    return get_rate();
   }
-  vector<int> options;
+  vector<pair<int, int>> options;
   for (int j = 0; j < M; ++j) {
     if (field[0][j] == '.') {
       move(j);
+      options.push_back({get_rate(), j});
       if (is_end()) {
         undo();
-        return get_move_type() == 'X' ? get_x_win() : get_o_win();
+        return options.back().first;
       } else {
         undo();
-        options.push_back(j);
       }
     }
   }
-  random_shuffle(options.begin(), options.end());
+  sort(options.begin(), options.end());
   if (get_move_type() == 'X') {
+    reverse(options.begin(), options.end());
     int res = alpha;
-    for (int j : options) {
+    for (auto e : options) {
+      int j = e.second;
       move(j);
       int nxt = make_move(depth - 1, alpha, beta);
       undo();
@@ -192,7 +243,8 @@ int make_move(int depth, int alpha, int beta) {
     return res;
   } else {
     int res = beta;
-    for (int j : options) {
+    for (auto e : options) {
+      int j = e.second;
       move(j);
       int nxt = make_move(depth - 1, alpha, beta);
       undo();
@@ -206,19 +258,7 @@ int make_move(int depth, int alpha, int beta) {
   }
 }
 
-int get_good_depth() {
-  if (history.size() <= 6) {
-    return 6;
-  } else if (history.size() <= 8) {
-    return 7;
-  } else if (history.size() <= 10) {
-    return 8;
-  } else if (history.size() <= 15) {
-    return 10;
-  } else {
-    return N * M;
-  }
-}
+int get_good_depth() { return 5; }
 
 int make_move() {
   if (history.empty()) {
@@ -238,6 +278,7 @@ int make_move() {
     }
   }
   random_shuffle(options.begin(), options.end());
+  int start = clock();
   int res, bj;
   if (get_move_type() == 'X') {
     res = O_WIN;
@@ -249,9 +290,6 @@ int make_move() {
       if (res < nxt) {
         res = nxt;
         bj = j;
-      }
-      if (res > DRAW) {
-        break;
       }
     }
   } else {
@@ -265,12 +303,10 @@ int make_move() {
         res = nxt;
         bj = j;
       }
-      if (res < DRAW) {
-        break;
-      }
     }
   }
   cout << "MOVE RATE: " << res << '\n';
+  cout << "TIME: " << clock() - start << '\n';
   return bj;
 }
 
