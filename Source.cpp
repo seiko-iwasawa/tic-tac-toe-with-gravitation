@@ -31,6 +31,7 @@ typedef unsigned long long ull;
 const int N = 6;
 const int M = 7;
 
+ull X_mask, O_mask;
 int rate_delta;
 bool have_win_streak;
 vector<int> x_streak_sum, o_streak_sum;
@@ -68,6 +69,7 @@ char field[N][M];
 vector<vector<int>> history;
 
 void init_field() {
+  X_mask = O_mask = 0;
   have_win_streak = false;
   fill(x_streak_sum.begin(), x_streak_sum.end(), 0);
   fill(o_streak_sum.begin(), o_streak_sum.end(), 0);
@@ -166,6 +168,11 @@ int get_move_place(int j) {
 void move(int j) {
   int i = get_move_place(j);
   field[i][j] = get_move_type();
+  if (field[i][j] == 'X') {
+    X_mask ^= 1LL << i * M + j;
+  } else {
+    O_mask ^= 1LL << i * M + j;
+  }
   add(i, j, 1, field[i][j]);
   history.push_back({i, j});
 }
@@ -174,6 +181,11 @@ void undo() {
   int i = history.back()[0];
   int j = history.back()[1];
   history.pop_back();
+  if (field[i][j] == 'X') {
+    X_mask ^= 1LL << i * M + j;
+  } else {
+    O_mask ^= 1LL << i * M + j;
+  }
   add(i, j, -1, field[i][j]);
   field[i][j] = '.';
 }
@@ -206,6 +218,8 @@ int get_rate() {
   }
 }
 
+map<pair<ull, ull>, int> mem;
+
 int make_move(int depth, int alpha, int beta) {
   if (is_end() || depth == 0) {
     return get_rate();
@@ -226,6 +240,9 @@ int make_move(int depth, int alpha, int beta) {
   sort(options.begin(), options.end());
   if (get_move_type() == 'X') {
     reverse(options.begin(), options.end());
+    if (mem.count({X_mask, O_mask})) {
+      alpha = mem[{X_mask, O_mask}];
+    }
     int res = alpha;
     for (auto e : options) {
       int j = e.second;
@@ -238,8 +255,11 @@ int make_move(int depth, int alpha, int beta) {
         break;
       }
     }
-    return res;
+    return mem[{X_mask, O_mask}] = res;
   } else {
+    if (mem.count({X_mask, O_mask})) {
+      beta = mem[{X_mask, O_mask}];
+    }
     int res = beta;
     for (auto e : options) {
       int j = e.second;
@@ -252,7 +272,7 @@ int make_move(int depth, int alpha, int beta) {
         break;
       }
     }
-    return res;
+    return mem[{X_mask, O_mask}] = res;
   }
 }
 
@@ -284,6 +304,7 @@ int make_move(int depth) {
     bj = options[0];
     for (int j : options) {
       move(j);
+      mem.clear();
       int nxt = make_move(depth, O_WIN, X_WIN);
       undo();
       if (res < nxt) {
@@ -296,6 +317,7 @@ int make_move(int depth) {
     bj = options[0];
     for (int j : options) {
       move(j);
+      mem.clear();
       int nxt = make_move(depth, O_WIN, X_WIN);
       undo();
       if (res > nxt) {
