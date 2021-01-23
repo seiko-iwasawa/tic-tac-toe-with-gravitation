@@ -107,8 +107,6 @@ bool is_end() { return is_filled() || have_win_streak; }
 
 char get_move_type() { return history.size() & 1 ? 'O' : 'X'; }
 
-int get_streak_impact(char cell) { return cell == 'O' ? -1 : +1; }
-
 void add(int i, int j, int d, char move) {
   if (move == 'X') {
     for (int ind : streak[i][j]) {
@@ -168,7 +166,7 @@ int get_move_place(int j) {
 void move(int j) {
   int i = get_move_place(j);
   field[i][j] = get_move_type();
-  add(i, j, get_streak_impact(field[i][j]), field[i][j]);
+  add(i, j, 1, field[i][j]);
   history.push_back({i, j});
 }
 
@@ -176,7 +174,7 @@ void undo() {
   int i = history.back()[0];
   int j = history.back()[1];
   history.pop_back();
-  add(i, j, -get_streak_impact(field[i][j]), field[i][j]);
+  add(i, j, -1, field[i][j]);
   field[i][j] = '.';
 }
 
@@ -258,10 +256,11 @@ int make_move(int depth, int alpha, int beta) {
   }
 }
 
-int get_good_depth() { return 5; }
+bool flag_break_cycle;
 
-int make_move() {
+int make_move(int depth) {
   if (history.empty()) {
+    flag_break_cycle = true;
     return 0;
   }
   vector<int> options;
@@ -270,6 +269,7 @@ int make_move() {
       move(j);
       if (is_end()) {
         undo();
+        flag_break_cycle = true;
         return j;
       } else {
         undo();
@@ -278,14 +278,13 @@ int make_move() {
     }
   }
   random_shuffle(options.begin(), options.end());
-  int start = clock();
   int res, bj;
   if (get_move_type() == 'X') {
     res = O_WIN;
     bj = options[0];
     for (int j : options) {
       move(j);
-      int nxt = make_move(get_good_depth(), O_WIN, X_WIN);
+      int nxt = make_move(depth, O_WIN, X_WIN);
       undo();
       if (res < nxt) {
         res = nxt;
@@ -297,7 +296,7 @@ int make_move() {
     bj = options[0];
     for (int j : options) {
       move(j);
-      int nxt = make_move(get_good_depth(), O_WIN, X_WIN);
+      int nxt = make_move(depth, O_WIN, X_WIN);
       undo();
       if (res > nxt) {
         res = nxt;
@@ -305,13 +304,26 @@ int make_move() {
       }
     }
   }
-  cout << "MOVE RATE: " << res << '\n';
-  cout << "TIME: " << clock() - start << '\n';
+  cout << "\tMOVE RATE: " << res << '\n';
+  if (res < O_WIN + 100 || res > X_WIN - 100) {
+    flag_break_cycle = true;
+  }
   return bj;
 }
 
 void computer_move() {
-  int j = make_move();
+  int j;
+  int start = clock();
+  int depth = 1;
+  flag_break_cycle = false;
+  while (!flag_break_cycle && depth <= 100 && clock() - start <= 5000) {
+    start = clock();
+    cout << "CUR IT #" << depth << ":\n";
+    j = make_move(depth);
+    cout << "\tMOVE: " << j + 1 << '\n';
+    cout << "\tTIME: " << clock() - start << '\n';
+    ++depth;
+  }
   cout << "Computer move: " << j + 1 << '\n';
   move(j);
 }
