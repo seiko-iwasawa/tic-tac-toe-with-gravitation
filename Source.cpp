@@ -39,9 +39,11 @@ vector<int> streak[N][M];
 
 void build_streak(int i, int j, int dx, int dy) {
   const int WIN_STREAK = 4;
+  int min_i = i;
   for (int k = 0, x = i, y = j; k < WIN_STREAK;
        ++k, x = (x + dx + N) % N, y = (y + dy + M) % M) {
     streak[x][y].push_back(x_streak_sum.size());
+    min_i = min(min_i, x);
   }
   x_streak_sum.push_back(0);
   o_streak_sum.push_back(0);
@@ -245,6 +247,9 @@ int make_move(int depth, int alpha, int beta) {
     }
     int res = alpha;
     for (auto e : options) {
+      if (e != options[0] && e.first <= alpha) {
+        break;
+      }
       int j = e.second;
       move(j);
       int nxt = make_move(depth - 1, alpha, beta);
@@ -262,6 +267,9 @@ int make_move(int depth, int alpha, int beta) {
     }
     int res = beta;
     for (auto e : options) {
+      if (e != options[0] && e.first >= beta) {
+        break;
+      }
       int j = e.second;
       move(j);
       int nxt = make_move(depth - 1, alpha, beta);
@@ -338,7 +346,7 @@ void computer_move() {
   int start = clock();
   int depth = 1;
   flag_break_cycle = false;
-  while (!flag_break_cycle && depth <= 100 && clock() - start <= 5000) {
+  while (!flag_break_cycle && depth <= 100 && clock() - start <= 500) {
     start = clock();
     cout << "CUR IT #" << depth << ":\n";
     j = make_move(depth);
