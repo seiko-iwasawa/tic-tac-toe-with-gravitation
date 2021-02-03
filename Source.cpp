@@ -1,30 +1,10 @@
 #include <algorithm>
-#include <bitset>
-#include <cassert>
-#include <cmath>
-#include <deque>
-#include <functional>
+#include <ctime>
 #include <iostream>
-#include <iterator>
 #include <map>
-#include <numeric>
-#include <ostream>
-#include <queue>
-#include <random>
-#include <set>
-#include <string>
 #include <vector>
 
-#include <ctime>
-
 using namespace std;
-
-#define MTEST() \
-  int _t;       \
-  cin >> _t;    \
-  for (int _tn = 0; _tn < _t; ++_tn)
-#define ALL(c) c.begin(), c.end()
-#define SZ(c) (int)c.size()
 
 typedef unsigned long long ull;
 
@@ -358,24 +338,55 @@ void computer_move() {
   move(j);
 }
 
-void run() {
-  cout << "===NEW GAME===\n";
-  int human_player;
+void print_new_game() { cout << "===NEW GAME===\n"; }
+
+const int FIRST_PLAYER = 1;
+const int SECOND_PLAYER = 2;
+const int BOTH_PLAYERS = 3;
+int human_player;
+
+/*
+if human_player == FRIST_PLAYER, then the human plays for first player
+else if human_player == SECOND_PLAYER, then the human plays for second player
+else if human_player == BOTH_PLAYERS, then the human plays for both players
+else the computer plays for both players
+*/
+void input_human_player() {
   cout << "Human player: ";
   cin >> human_player;
-  --human_player;
+}
+
+void print_start_position() { print_position(); }
+
+void init_new_game() {
+  print_new_game();
+  input_human_player();
   init_field();
-  print_position();
-  int cur_player = 0;
+  print_start_position();
+}
+
+int player;
+
+void switch_player() {
+  player = (player == FIRST_PLAYER ? SECOND_PLAYER : FIRST_PLAYER);
+}
+
+bool is_human_moving() { return player == human_player || human_player == 3; }
+
+void run_game_mainloop() {
+  player = FIRST_PLAYER;
   while (!is_end()) {
-    if (cur_player == human_player || human_player == 2) {
+    if (is_human_moving()) {
       human_move();
     } else {
       computer_move();
     }
-    cur_player ^= true;
+    switch_player();
     print_position();
   }
+}
+
+void print_result() {
   if (!have_win_streak) {
     cout << "Draw.\n";
   } else if (get_move_type() == 'O') {
@@ -385,13 +396,19 @@ void run() {
   }
 }
 
+void run_game() {
+  init_new_game();
+  run_game_mainloop();
+  print_result();
+}
+
 signed main() {
   ios_base::sync_with_stdio(false);
   cin.tie(NULL);
   cout.tie(NULL);
   prepare();
   while (true) {
-    run();
+    run_game();
   }
   return 0;
 }
