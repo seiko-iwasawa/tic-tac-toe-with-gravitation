@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -8,8 +9,30 @@ using namespace std;
 
 typedef unsigned long long ull;
 
+const int PREGAMES = 30;
+const int MAX_REC_TIME = 500;
+const int MANY_LOSES = 10;
+
 const int N = 6;
 const int M = 7;
+const int STREAK_LEN = 4;
+const int DX[4] = {0, +1, +1, +1};
+const int DY[4] = {+1, +1, 0, -1};
+
+map<pair<ull, ull>, vector<int>> mem;
+
+void load_mem() {
+  ifstream fin("mem.txt");
+  ull a, b;
+  while (fin >> a >> b) {
+    vector<int> arr(M);
+    for (int i = 0; i < M; ++i) {
+      fin >> arr[i];
+    }
+    mem[{a, b}] = arr;
+  }
+  fin.close();
+}
 
 ull X_mask, O_mask;
 int rate_delta;
@@ -45,10 +68,27 @@ void build_streak() {
   }
 }
 
-void prepare() { build_streak(); }
+void prepare() {
+  load_mem();
+  build_streak();
+}
+
+void save_mem() {
+  ofstream fout("new_mem.txt");
+  for (auto e : mem) {
+    fout << e.first.first << ' ' << e.first.second << ' ';
+    for (auto x : e.second) {
+      fout << x << ' ';
+    }
+    fout << '\n';
+  }
+  fout.close();
+}
 
 char field[N][M];
 vector<vector<int>> history;
+vector<int> streak_type;
+vector<int> streak_sum;
 
 void init_field() {
   X_mask = O_mask = 0;
@@ -86,6 +126,37 @@ void print_position() {
 }
 
 bool is_filled() { return history.size() == N * M; }
+
+char get_streak(int i, int j, int dx, int dy) {
+  for (int k = 0; k < STREAK_LEN; ++k) {
+    if (field[(i + k * dx + N) % N][(j + k * dy + M) % M] != field[i][j]) {
+      return '.';
+    }
+  }
+  return field[i][j];
+}
+
+char get_streak(int i, int j) {
+  for (int k = 0; k < 4; ++k) {
+    int streak = get_streak(i, j, DX[k], DY[k]);
+    if (streak != '.') {
+      return streak;
+    }
+  }
+  return '.';
+}
+
+char get_streak() {
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      char streak = get_streak(i, j);
+      if (streak != '.') {
+        return streak;
+      }
+    }
+  }
+  return '.';
+}
 
 bool is_end() { return is_filled() || have_win_streak; }
 
@@ -172,12 +243,14 @@ void undo() {
   field[i][j] = '.';
 }
 
-void human_move() {
-  cout << "Human move: ";
-  int j;
-  cin >> j;
-  --j;
-  move(j);
+ull get_mask(char c) {
+  ull res = 0;
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      res |= (ull)(field[i][j] == c) << (i * M + j);
+    }
+  }
+  return res;
 }
 
 const int O_WIN = -1e9;
@@ -200,7 +273,7 @@ int get_rate() {
   }
 }
 
-map<pair<ull, ull>, int> mem;
+map<pair<ull, ull>, int> rec_mem;
 
 int make_move(int depth, int alpha, int beta) {
   if (is_end() || depth == 0) {
@@ -222,8 +295,8 @@ int make_move(int depth, int alpha, int beta) {
   sort(options.begin(), options.end());
   if (get_move_type() == 'X') {
     reverse(options.begin(), options.end());
-    if (mem.count({X_mask, O_mask})) {
-      alpha = mem[{X_mask, O_mask}];
+    if (rec_mem.count({X_mask, O_mask})) {
+      alpha = rec_mem[{X_mask, O_mask}];
     }
     int res = alpha;
     for (auto e : options) {
@@ -240,10 +313,10 @@ int make_move(int depth, int alpha, int beta) {
         break;
       }
     }
-    return mem[{X_mask, O_mask}] = res;
+    return rec_mem[{X_mask, O_mask}] = res;
   } else {
-    if (mem.count({X_mask, O_mask})) {
-      beta = mem[{X_mask, O_mask}];
+    if (rec_mem.count({X_mask, O_mask})) {
+      beta = rec_mem[{X_mask, O_mask}];
     }
     int res = beta;
     for (auto e : options) {
@@ -260,17 +333,13 @@ int make_move(int depth, int alpha, int beta) {
         break;
       }
     }
-    return mem[{X_mask, O_mask}] = res;
+    return rec_mem[{X_mask, O_mask}] = res;
   }
 }
 
 bool flag_break_cycle;
 
 int make_move(int depth) {
-  if (history.empty()) {
-    flag_break_cycle = true;
-    return 0;
-  }
   vector<int> options;
   for (int j = 0; j < M; ++j) {
     if (field[0][j] == '.') {
@@ -292,7 +361,7 @@ int make_move(int depth) {
     bj = options[0];
     for (int j : options) {
       move(j);
-      mem.clear();
+      rec_mem.clear();
       int nxt = make_move(depth, O_WIN, X_WIN);
       undo();
       if (res < nxt) {
@@ -305,7 +374,7 @@ int make_move(int depth) {
     bj = options[0];
     for (int j : options) {
       move(j);
-      mem.clear();
+      rec_mem.clear();
       int nxt = make_move(depth, O_WIN, X_WIN);
       undo();
       if (res > nxt) {
@@ -321,20 +390,71 @@ int make_move(int depth) {
   return bj;
 }
 
-void computer_move() {
-  int j;
-  int start = clock();
-  int depth = 1;
-  flag_break_cycle = false;
-  while (!flag_break_cycle && depth <= 100 && clock() - start <= 500) {
-    start = clock();
-    cout << "CUR IT #" << depth << ":\n";
-    j = make_move(depth);
-    cout << "\tMOVE: " << j + 1 << '\n';
-    cout << "\tTIME: " << clock() - start << '\n';
-    ++depth;
+ull get_maskX() { return get_mask('X'); }
+
+ull get_maskO() { return get_mask('O'); }
+
+const int INF = (int)1e9 + 7;
+
+int get_the_best_move() {
+  vector<int> &cur = mem[{get_maskX(), get_maskO()}];
+  if (cur.empty()) {
+    cur.resize(M);
+    for (int j = 0; j < M; ++j) {
+      if (field[0][j] != '.') {
+        cur[j] = INF;
+      }
+    }
   }
+  int s = 0;
+  for (int j = 0; j < M; ++j) {
+    if (cur[j] != INF) {
+      s += cur[j];
+    }
+  }
+  if (s > MANY_LOSES) {
+    int res = 0;
+    for (int j = 0; j < M; ++j) {
+      if (cur[res] > cur[j]) {
+        res = j;
+      } else if (cur[res] == cur[j] && rand() % 2) {
+        res = j;
+      }
+    }
+    return res;
+  } else {
+    int j;
+    int depth = 1;
+    flag_break_cycle = false;
+    int start = clock();
+    while (!flag_break_cycle && depth <= 100 &&
+           clock() - start <= MAX_REC_TIME) {
+      start = clock();
+      cout << "CUR IT #" << depth << ":\n";
+      j = make_move(depth);
+      cout << "\tMOVE: " << j + 1 << '\n';
+      cout << "\tTIME: " << clock() - start << '\n';
+      ++depth;
+    }
+    return j;
+  }
+}
+
+void computer_move() {
+  int j = get_the_best_move();
   cout << "Computer move: " << j + 1 << '\n';
+  move(j);
+}
+
+void human_move() {
+  cout << "Human move: ";
+  int j;
+  cin >> j;
+  --j;
+  if (j == -1) {
+    j = get_the_best_move();
+    cout << "Tip: " << j + 1 << '\n';
+  }
   move(j);
 }
 
@@ -343,17 +463,32 @@ void print_new_game() { cout << "===NEW GAME===\n"; }
 const int FIRST_PLAYER = 1;
 const int SECOND_PLAYER = 2;
 const int BOTH_PLAYERS = 3;
+const int GAME_FOR_LOG = 4;
+const int EXIT = 5;
 int human_player;
 
 /*
 if human_player == FRIST_PLAYER, then the human plays for first player
 else if human_player == SECOND_PLAYER, then the human plays for second player
 else if human_player == BOTH_PLAYERS, then the human plays for both players
+else if human_player == GAME_FOR_LOG, then the computer plays for both players
+and this game will be logging
+else if human_player == EXIT, then the program will be over
 else the computer plays for both players
 */
 void input_human_player() {
-  cout << "Human player: ";
-  cin >> human_player;
+  static int it = 0;
+  ++it;
+  if (it < PREGAMES) {
+    human_player = GAME_FOR_LOG;
+  } else {
+    cout << "Human player: ";
+    cin >> human_player;
+    if (human_player == EXIT) {
+      save_mem();
+      exit(0);
+    }
+  }
 }
 
 void print_start_position() { print_position(); }
@@ -387,7 +522,7 @@ void run_game_mainloop() {
 }
 
 void print_result() {
-  if (!have_win_streak) {
+  if (get_streak() == '.') {
     cout << "Draw.\n";
   } else if (get_move_type() == 'O') {
     cout << "First player won.\n";
@@ -396,16 +531,35 @@ void print_result() {
   }
 }
 
+void log_game() {
+  if (human_player != GAME_FOR_LOG) {
+    return;
+  }
+  bool flag = (get_streak() == '.');
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      field[i][j] = '.';
+    }
+  }
+  for (int i = 0; i < history.size(); ++i) {
+    vector<int> &cur = mem[{get_maskX(), get_maskO()}];
+    cur[history[i][1]] += ((history.size() - i) % 2 == 0 || flag);
+    field[history[i][0]][history[i][1]] = (i % 2 == 0 ? 'X' : 'O');
+  }
+}
+
 void run_game() {
   init_new_game();
   run_game_mainloop();
   print_result();
+  log_game();
 }
 
 signed main() {
   ios_base::sync_with_stdio(false);
   cin.tie(NULL);
   cout.tie(NULL);
+  srand((unsigned int)time(NULL));
   prepare();
   while (true) {
     run_game();
