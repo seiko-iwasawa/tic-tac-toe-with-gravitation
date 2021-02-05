@@ -9,8 +9,8 @@ using namespace std;
 
 typedef unsigned long long ull;
 
-const int PREGAMES = 30;
-const int MAX_REC_TIME = 500;
+const int PREGAMES = 0;
+const int MAX_REC_TIME = 5000;
 const int MANY_LOSES = 10;
 
 const int N = 6;
@@ -162,12 +162,16 @@ bool is_end() { return is_filled() || have_win_streak; }
 
 char get_move_type() { return history.size() & 1 ? 'O' : 'X'; }
 
+const int KEK = 5;
+
 void add(int i, int j, int d, char move) {
   if (move == 'X') {
     for (int ind : streak[i][j]) {
       if (x_streak_sum[ind] == 4) {
         have_win_streak = false;
       }
+      rate_delta -= (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+      rate_delta -= (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       if (o_streak_sum[ind] == 0) {
         rate_delta -= x_streak_sum[ind] * x_streak_sum[ind];
       }
@@ -175,6 +179,8 @@ void add(int i, int j, int d, char move) {
         rate_delta -= -o_streak_sum[ind] * o_streak_sum[ind];
       }
       x_streak_sum[ind] += d;
+	  rate_delta += (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+	  rate_delta += (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       if (x_streak_sum[ind] == 0) {
         rate_delta += -o_streak_sum[ind] * o_streak_sum[ind];
       }
@@ -196,7 +202,11 @@ void add(int i, int j, int d, char move) {
       if (o_streak_sum[ind] == 0) {
         rate_delta -= x_streak_sum[ind] * x_streak_sum[ind];
       }
+	  rate_delta -= (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+	  rate_delta -= (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       o_streak_sum[ind] += d;
+	  rate_delta += (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+	  rate_delta += (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       if (o_streak_sum[ind] == 0) {
         rate_delta += x_streak_sum[ind] * x_streak_sum[ind];
       }
