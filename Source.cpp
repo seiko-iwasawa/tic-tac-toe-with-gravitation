@@ -99,8 +99,8 @@ bool have_win_streak;
 void init_field() {
   X_mask = O_mask = 0;
   have_win_streak = false;
-  x_streak_sum.resize(streak_number, 0);
-  o_streak_sum.resize(streak_number, 0);
+  x_streak_sum.assign(streak_number, 0);
+  o_streak_sum.assign(streak_number, 0);
   history.clear();
   rate_delta = 0;
   for (int i = 0; i < N; ++i) {
