@@ -14,8 +14,7 @@ const int M = 7;
 const int WIN_STREAK = 4;
 const int PREGAMES = 0;
 const int MAX_REC_TIME = 5000;
-const int MANY_LOSSES = 10;  // if the position had at least MANY_LOSSES losses,
-                             // position is considered learned
+const int DELTA_LOSSES = 0;
 const string DATA_BASE_FILENAME = "data-base.txt";
 
 const int DX[4] = {0, +1, +1, +1};
@@ -84,9 +83,30 @@ void build_streak() {
   }
 }
 
+int mask_leader[1 << M];
+
+int shift_mask(int mask, int j) {
+  int res = 0;
+  for (int i = 0; i < M; ++i) {
+    res |= (mask >> i & 1) << (i + j) % M;
+  }
+  return res;
+}
+
+void build_mask_leader() {
+  for (int mask = 1; mask < (1 << N); ++mask) {
+    if (mask_leader[mask] == 0) {
+      for (int j = 0; j < M; ++j) {
+        mask_leader[shift_mask(mask, j)] = j;
+      }
+    }
+  }
+}
+
 void prepare() {
   // load_data_base();
   build_streak();
+  build_mask_leader();
 }
 
 char field[N][M];
@@ -259,16 +279,6 @@ void undo() {
   field[i][j] = '.';
 }
 
-ull get_mask(char c) {
-  ull res = 0;
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < M; ++j) {
-      res |= (ull)(field[i][j] == c) << (i * M + j);
-    }
-  }
-  return res;
-}
-
 const int O_WIN = -1e9;
 const int DRAW = 0;
 const int X_WIN = 1e9;
@@ -317,7 +327,7 @@ int make_move(int depth, int alpha, int beta) {
     int res = alpha;
     for (auto e : options) {
       if (e != options[0] && e.first <= alpha) {
-        break;
+        // break;
       }
       int j = e.second;
       move(j);
@@ -337,7 +347,7 @@ int make_move(int depth, int alpha, int beta) {
     int res = beta;
     for (auto e : options) {
       if (e != options[0] && e.first >= beta) {
-        break;
+        // break;
       }
       int j = e.second;
       move(j);
@@ -355,9 +365,9 @@ int make_move(int depth, int alpha, int beta) {
 
 bool flag_break_cycle;
 
-int make_move(int depth) {
+int make_move(int depth, vector<int> &good_first_moves) {
   vector<int> options;
-  for (int j = 0; j < M; ++j) {
+  for (int j : good_first_moves) {
     if (field[0][j] == '.') {
       move(j);
       if (is_end()) {
@@ -406,54 +416,66 @@ int make_move(int depth) {
   return bj;
 }
 
-ull get_maskX() { return get_mask('X'); }
+ull get_mask(char c, int shift) {
+  ull res = 0;
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      res |= (ull)(field[i][j] == c) << (i * M + (j - shift + M) % M);
+    }
+  }
+  return res;
+}
 
-ull get_maskO() { return get_mask('O'); }
+ull get_maskX(int shift) { return get_mask('X', shift); }
+
+ull get_maskO(int shift) { return get_mask('O', shift); }
 
 const int INF = (int)1e9 + 7;
 
+int get_shift() {
+  int mask = 0;
+  for (int j = 0; j < M; ++j) {
+    mask |= (field[N - 1][j] == 'X') << j;
+  }
+  return mask_leader[mask];
+}
+
 int get_the_best_move() {
-  vector<int> &cur = data_base[{get_maskX(), get_maskO()}];
+  int shift = get_shift();
+  vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
   if (cur.empty()) {
     cur.resize(M);
     for (int j = 0; j < M; ++j) {
       if (field[0][j] != '.') {
-        cur[j] = INF;
+        cur[(j - shift + M) % M] = INF;
       }
     }
   }
-  int s = 0;
+  int min_n_losses = 0;
   for (int j = 0; j < M; ++j) {
     if (cur[j] != INF) {
-      s += cur[j];
+      min_n_losses = min(min_n_losses, cur[j]);
     }
   }
-  if (s > MANY_LOSSES) {
-    int res = 0;
-    for (int j = 0; j < M; ++j) {
-      if (cur[res] > cur[j]) {
-        res = j;
-      } else if (cur[res] == cur[j] && rand() % 2) {
-        res = j;
-      }
+  vector<int> good_first_moves;
+  for (int j = 0; j < M; ++j) {
+    if (cur[j] <= min_n_losses + DELTA_LOSSES) {
+      good_first_moves.push_back((j + shift) % M);
     }
-    return res;
-  } else {
-    int j;
-    int depth = 1;
-    flag_break_cycle = false;
-    int start = clock();
-    while (!flag_break_cycle && depth <= 100 &&
-           clock() - start <= MAX_REC_TIME) {
-      start = clock();
-      cout << "CUR IT #" << depth << ":\n";
-      j = make_move(depth);
-      cout << "\tMOVE: " << j + 1 << '\n';
-      cout << "\tTIME: " << clock() - start << '\n';
-      ++depth;
-    }
-    return j;
   }
+  int j;
+  int depth = 1;
+  flag_break_cycle = false;
+  int start = clock();
+  while (!flag_break_cycle && depth <= 100 && clock() - start <= MAX_REC_TIME) {
+    start = clock();
+    cout << "CUR IT #" << depth << ":\n";
+    j = make_move(depth, good_first_moves);
+    cout << "\tMOVE: " << j + 1 << '\n';
+    cout << "\tTIME: " << clock() - start << '\n';
+    ++depth;
+  }
+  return j;
 }
 
 void computer_move() {
@@ -558,8 +580,10 @@ void log_game() {
     }
   }
   for (int i = 0; i < history.size(); ++i) {
-    vector<int> &cur = data_base[{get_maskX(), get_maskO()}];
-    cur[history[i][1]] += ((history.size() - i) % 2 == 0 || flag);
+    int shift = get_shift();
+    vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
+    cur[(history[i][1] - shift + M) % M] +=
+        ((history.size() - i) % 2 == 0 || flag);
     field[history[i][0]][history[i][1]] = (i % 2 == 0 ? 'X' : 'O');
   }
 }
