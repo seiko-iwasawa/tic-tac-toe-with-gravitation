@@ -85,7 +85,7 @@ void build_streak() {
 }
 
 void prepare() {
-  load_data_base();
+  // load_data_base();
   build_streak();
 }
 
