@@ -324,6 +324,9 @@ int make_move(int depth, int alpha, int beta) {
     if (rec_mem.count({X_mask, O_mask})) {
       alpha = rec_mem[{X_mask, O_mask}];
     }
+    if (alpha >= beta) {
+      return alpha;
+    }
     int res = alpha;
     for (auto e : options) {
       if (e != options[0] && e.first <= alpha) {
@@ -343,6 +346,9 @@ int make_move(int depth, int alpha, int beta) {
   } else {
     if (rec_mem.count({X_mask, O_mask})) {
       beta = rec_mem[{X_mask, O_mask}];
+    }
+    if (alpha >= beta) {
+      return beta;
     }
     int res = beta;
     for (auto e : options) {
@@ -451,7 +457,7 @@ int get_the_best_move() {
       }
     }
   }
-  int min_n_losses = 0;
+  int min_n_losses = INF;
   for (int j = 0; j < M; ++j) {
     if (cur[j] != INF) {
       min_n_losses = min(min_n_losses, cur[j]);
@@ -464,7 +470,7 @@ int get_the_best_move() {
     }
   }
   int j;
-  int depth = 1;
+  int depth = 6;
   flag_break_cycle = false;
   int start = clock();
   while (!flag_break_cycle && depth <= 100 && clock() - start <= MAX_REC_TIME) {
