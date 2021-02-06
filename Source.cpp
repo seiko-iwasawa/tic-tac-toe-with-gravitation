@@ -9,52 +9,68 @@ using namespace std;
 
 typedef unsigned long long ull;
 
-const int PREGAMES = 0;
-const int MAX_REC_TIME = 5000;
-const int MANY_LOSES = 10;
-
 const int N = 6;
 const int M = 7;
-const int STREAK_LEN = 4;
+const int WIN_STREAK = 4;
+const int PREGAMES = 0;
+const int MAX_REC_TIME = 5000;
+const int MANY_LOSSES = 10;  // if the position had at least MANY_LOSSES losses,
+                             // position is considered learned
+const string DATA_BASE_FILENAME = "data-base.txt";
+
 const int DX[4] = {0, +1, +1, +1};
 const int DY[4] = {+1, +1, 0, -1};
 
-map<pair<ull, ull>, vector<int>> mem;
+map<pair<ull, ull>, vector<int>>
+    data_base;  // stores the number of losses for each move in the position
 
-void load_mem() {
-  ifstream fin("mem.txt");
-  ull a, b;
-  while (fin >> a >> b) {
-    vector<int> arr(M);
-    for (int i = 0; i < M; ++i) {
-      fin >> arr[i];
-    }
-    mem[{a, b}] = arr;
+void load_data_position(ifstream &fin) {
+  ull X_mask, O_mask;
+  fin >> X_mask >> O_mask;
+  vector<int> losses(M);
+  for (int i = 0; i < M; ++i) {
+    fin >> losses[i];
+  }
+  data_base[{X_mask, O_mask}] = losses;
+}
+
+void load_data_base() {
+  ifstream fin(DATA_BASE_FILENAME);
+  while (!fin.eof()) {
+    load_data_position(fin);
   }
   fin.close();
 }
 
-ull X_mask, O_mask;
-int rate_delta;
-bool have_win_streak;
+void save_data_position(ofstream &fout,
+                        pair<pair<ull, ull>, vector<int>> data) {
+  fout << data.first.first << ' ' << data.first.second << ' ';
+  for (auto x : data.second) {
+    fout << x << ' ';
+  }
+  fout << '\n';
+}
+
+void save_data_base() {
+  ofstream fout("new-" + DATA_BASE_FILENAME);
+  for (auto e : data_base) {
+    save_data_position(fout, e);
+  }
+  fout.close();
+}
+
 vector<int> x_streak_sum, o_streak_sum;
+int streak_number = 0;
 vector<int> streak[N][M];
 
 void build_streak(int i, int j, int dx, int dy) {
-  const int WIN_STREAK = 4;
-  int min_i = i;
-  for (int k = 0, x = i, y = j; k < WIN_STREAK;
-       ++k, x = (x + dx + N) % N, y = (y + dy + M) % M) {
-    streak[x][y].push_back(x_streak_sum.size());
-    min_i = min(min_i, x);
+  for (int k = 0; k < WIN_STREAK; ++k) {
+    streak[(i + k * dx + N) % N][(j + k * dy + M) % M].push_back(streak_number);
   }
-  x_streak_sum.push_back(0);
-  o_streak_sum.push_back(0);
+  ++streak_number;
 }
 
 void build_streak(int i, int j) {
-  const int DX[4] = {-1, 0, +1, +1};
-  const int DY[4] = {+1, +1, +1, 0};
   for (int k = 0; k < 4; ++k) {
     build_streak(i, j, DX[k], DY[k]);
   }
@@ -69,32 +85,22 @@ void build_streak() {
 }
 
 void prepare() {
-  load_mem();
+  load_data_base();
   build_streak();
-}
-
-void save_mem() {
-  ofstream fout("new_mem.txt");
-  for (auto e : mem) {
-    fout << e.first.first << ' ' << e.first.second << ' ';
-    for (auto x : e.second) {
-      fout << x << ' ';
-    }
-    fout << '\n';
-  }
-  fout.close();
 }
 
 char field[N][M];
 vector<vector<int>> history;
 vector<int> streak_type;
-vector<int> streak_sum;
+ull X_mask, O_mask;
+int rate_delta;
+bool have_win_streak;
 
 void init_field() {
   X_mask = O_mask = 0;
   have_win_streak = false;
-  fill(x_streak_sum.begin(), x_streak_sum.end(), 0);
-  fill(o_streak_sum.begin(), o_streak_sum.end(), 0);
+  x_streak_sum.resize(streak_number, 0);
+  o_streak_sum.resize(streak_number, 0);
   history.clear();
   rate_delta = 0;
   for (int i = 0; i < N; ++i) {
@@ -128,7 +134,7 @@ void print_position() {
 bool is_filled() { return history.size() == N * M; }
 
 char get_streak(int i, int j, int dx, int dy) {
-  for (int k = 0; k < STREAK_LEN; ++k) {
+  for (int k = 0; k < WIN_STREAK; ++k) {
     if (field[(i + k * dx + N) % N][(j + k * dy + M) % M] != field[i][j]) {
       return '.';
     }
@@ -179,8 +185,8 @@ void add(int i, int j, int d, char move) {
         rate_delta -= -o_streak_sum[ind] * o_streak_sum[ind];
       }
       x_streak_sum[ind] += d;
-	  rate_delta += (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
-	  rate_delta += (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
+      rate_delta += (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+      rate_delta += (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       if (x_streak_sum[ind] == 0) {
         rate_delta += -o_streak_sum[ind] * o_streak_sum[ind];
       }
@@ -202,11 +208,11 @@ void add(int i, int j, int d, char move) {
       if (o_streak_sum[ind] == 0) {
         rate_delta -= x_streak_sum[ind] * x_streak_sum[ind];
       }
-	  rate_delta -= (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
-	  rate_delta -= (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
+      rate_delta -= (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+      rate_delta -= (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       o_streak_sum[ind] += d;
-	  rate_delta += (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
-	  rate_delta += (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
+      rate_delta += (x_streak_sum[ind] == 3 && o_streak_sum[ind] == 0) * KEK;
+      rate_delta += (o_streak_sum[ind] == 3 && x_streak_sum[ind] == 0) * -KEK;
       if (o_streak_sum[ind] == 0) {
         rate_delta += x_streak_sum[ind] * x_streak_sum[ind];
       }
@@ -407,7 +413,7 @@ ull get_maskO() { return get_mask('O'); }
 const int INF = (int)1e9 + 7;
 
 int get_the_best_move() {
-  vector<int> &cur = mem[{get_maskX(), get_maskO()}];
+  vector<int> &cur = data_base[{get_maskX(), get_maskO()}];
   if (cur.empty()) {
     cur.resize(M);
     for (int j = 0; j < M; ++j) {
@@ -422,7 +428,7 @@ int get_the_best_move() {
       s += cur[j];
     }
   }
-  if (s > MANY_LOSES) {
+  if (s > MANY_LOSSES) {
     int res = 0;
     for (int j = 0; j < M; ++j) {
       if (cur[res] > cur[j]) {
@@ -495,7 +501,7 @@ void input_human_player() {
     cout << "Human player: ";
     cin >> human_player;
     if (human_player == EXIT) {
-      save_mem();
+      save_data_base();
       exit(0);
     }
   }
@@ -552,7 +558,7 @@ void log_game() {
     }
   }
   for (int i = 0; i < history.size(); ++i) {
-    vector<int> &cur = mem[{get_maskX(), get_maskO()}];
+    vector<int> &cur = data_base[{get_maskX(), get_maskO()}];
     cur[history[i][1]] += ((history.size() - i) % 2 == 0 || flag);
     field[history[i][0]][history[i][1]] = (i % 2 == 0 ? 'X' : 'O');
   }
