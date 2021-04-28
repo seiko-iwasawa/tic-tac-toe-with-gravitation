@@ -14,5 +14,6 @@ signed main() {
   while (true) {
     run_game();
   }
+  // test
   return 0;
 }
