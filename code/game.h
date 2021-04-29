@@ -1,8 +1,10 @@
 #pragma once
 
 struct Game {
+  AI ai;
+
   void computer_move() {
-    int j = get_the_best_move();
+    int j = ai.get_the_best_move();
     cout << "Computer move: " << j + 1 << '\n';
     move(j);
   }
@@ -15,7 +17,7 @@ struct Game {
   }
 
   int get_tip() {
-    int j = get_the_best_move();
+    int j = ai.get_the_best_move();
     cout << "Tip: " << j + 1 << '\n';
     return j;
   }
@@ -104,8 +106,8 @@ struct Game {
       }
     }
     for (int i = 0; i < (int)history.size(); ++i) {
-      int shift = get_shift();
-      vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
+      int shift = ai.get_shift();
+      vector<int> &cur = data_base[{ai.get_maskX(shift), ai.get_maskO(shift)}];
       cur[(history[i][1] - shift + M) % M] +=
           ((history.size() - i) % 2 == 0 || flag);
       field[history[i][0]][history[i][1]] = (i % 2 == 0 ? 'X' : 'O');
