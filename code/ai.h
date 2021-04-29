@@ -1,30 +1,31 @@
 #pragma once
 
 struct AI {
+  Field field;
   map<pair<ull, ull>, int> rec_mem;
 
   int make_move(int depth, int alpha, int beta) {
-    if (is_end() || depth == 0) {
-      return get_rate();
+    if (field.is_end() || depth == 0) {
+      return field.get_rate();
     }
     vector<pair<int, int>> options;
     for (int j = 0; j < M; ++j) {
       if (field[0][j] == '.') {
-        move(j);
-        options.push_back({get_rate(), j});
-        if (is_end()) {
-          undo();
+        field.move(j);
+        options.push_back({field.get_rate(), j});
+        if (field.is_end()) {
+          field.undo();
           return options.back().first;
         } else {
-          undo();
+          field.undo();
         }
       }
     }
     sort(options.begin(), options.end());
-    if (get_move_type() == 'X') {
+    if (field.get_move_type() == 'X') {
       reverse(options.begin(), options.end());
-      if (rec_mem.count({X_mask, O_mask})) {
-        alpha = rec_mem[{X_mask, O_mask}];
+      if (rec_mem.count({field.X_mask, field.O_mask})) {
+        alpha = rec_mem[{field.X_mask, field.O_mask}];
       }
       if (alpha >= beta) {
         return alpha;
@@ -35,19 +36,19 @@ struct AI {
           // break;
         }
         int j = e.second;
-        move(j);
+        field.move(j);
         int nxt = make_move(depth - 1, alpha, beta);
-        undo();
+        field.undo();
         res = max(res, nxt);
         alpha = max(alpha, res);
         if (res >= beta) {
           break;
         }
       }
-      return rec_mem[{X_mask, O_mask}] = res;
+      return rec_mem[{field.X_mask, field.O_mask}] = res;
     } else {
-      if (rec_mem.count({X_mask, O_mask})) {
-        beta = rec_mem[{X_mask, O_mask}];
+      if (rec_mem.count({field.X_mask, field.O_mask})) {
+        beta = rec_mem[{field.X_mask, field.O_mask}];
       }
       if (alpha >= beta) {
         return beta;
@@ -58,16 +59,16 @@ struct AI {
           // break;
         }
         int j = e.second;
-        move(j);
+        field.move(j);
         int nxt = make_move(depth - 1, alpha, beta);
-        undo();
+        field.undo();
         res = min(res, nxt);
         beta = min(beta, res);
         if (res <= alpha) {
           break;
         }
       }
-      return rec_mem[{X_mask, O_mask}] = res;
+      return rec_mem[{field.X_mask, field.O_mask}] = res;
     }
   }
 
@@ -77,27 +78,27 @@ struct AI {
     vector<int> options;
     for (int j : good_first_moves) {
       if (field[0][j] == '.') {
-        move(j);
-        if (is_end()) {
-          undo();
+        field.move(j);
+        if (field.is_end()) {
+          field.undo();
           flag_break_cycle = true;
           return j;
         } else {
-          undo();
+          field.undo();
           options.push_back(j);
         }
       }
     }
     random_shuffle(options.begin(), options.end());
     int res, bj;
-    if (get_move_type() == 'X') {
+    if (field.get_move_type() == 'X') {
       res = O_WIN;
       bj = options[0];
       for (int j : options) {
-        move(j);
+        field.move(j);
         rec_mem.clear();
         int nxt = make_move(depth, O_WIN, X_WIN);
-        undo();
+        field.undo();
         if (res < nxt) {
           res = nxt;
           bj = j;
@@ -107,10 +108,10 @@ struct AI {
       res = X_WIN;
       bj = options[0];
       for (int j : options) {
-        move(j);
+        field.move(j);
         rec_mem.clear();
         int nxt = make_move(depth, O_WIN, X_WIN);
-        undo();
+        field.undo();
         if (res > nxt) {
           res = nxt;
           bj = j;
@@ -148,7 +149,8 @@ struct AI {
     return mask_leader[mask];
   }
 
-  int get_the_best_move() {
+  int get_the_best_move(Field _field) {
+    field = _field;
     int shift = get_shift();
     vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
     if (cur.empty()) {
@@ -175,7 +177,7 @@ struct AI {
     int depth = 6;
     flag_break_cycle = false;
     int start = clock();
-    while (!flag_break_cycle && depth <= N * M - (int)history.size() &&
+    while (!flag_break_cycle && depth <= N * M - (int)field.history.size() &&
            (int)clock() - start <= MAX_REC_TIME) {
       start = clock();
       cout << "CUR IT #" << depth << ":\n";
