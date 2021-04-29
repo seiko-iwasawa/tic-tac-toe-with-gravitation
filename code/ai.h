@@ -20,7 +20,7 @@ int make_move(int depth, int alpha, int beta) {
     }
   }
   sort(options.begin(), options.end());
-  if (get_move_type() == 'X') {
+  if (get_turn_order() == 'X') {
     reverse(options.begin(), options.end());
     if (rec_mem.count({X_mask, O_mask})) {
       alpha = rec_mem[{X_mask, O_mask}];
@@ -89,7 +89,7 @@ int make_move(int depth, vector<int> &good_first_moves) {
   }
   random_shuffle(options.begin(), options.end());
   int res, bj;
-  if (get_move_type() == 'X') {
+  if (get_turn_order() == 'X') {
     res = O_WIN;
     bj = options[0];
     for (int j : options) {
@@ -174,7 +174,7 @@ int get_the_best_move() {
   int depth = 6;
   flag_break_cycle = false;
   int start = clock();
-  while (!flag_break_cycle && depth <= N * M - history.size() &&
+  while (!flag_break_cycle && depth <= N * M - (int)history.size() &&
          clock() - start <= MAX_REC_TIME) {
     start = clock();
     cout << "CUR IT #" << depth << ":\n";

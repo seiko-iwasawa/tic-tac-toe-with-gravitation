@@ -38,28 +38,51 @@ else if game_type == BOTH_PLAYERS, then the human plays for both players
 else if game_type == GAME_FOR_LOG, then the computer plays for both players
 and this game will be logging
 else if game_type == EXIT, then the program will be over
+else if game_type == CHANGE_SEED, then you can be able change game seed
 else the computer plays for both players
 */
 void input_game_type() {
+  cout << "Game type: ";
+  cin >> game_type;
+  if (game_type == EXIT) {
+    save_data_base();
+    exit(0);
+  }
+}
+
+void init_game_type() {
   static int it = 0;
   ++it;
   if (it < PREGAMES) {
     game_type = GAME_FOR_LOG;
   } else {
-    cout << "Game type: ";
-    cin >> game_type;
-    if (game_type == EXIT) {
-      save_data_base();
-      exit(0);
-    }
+    input_game_type();
   }
 }
 
 void print_start_position() { print_position(); }
 
-void init_new_game() {
+void init_seed() {
+  unsigned int seed = time(NULL);
+  cout << "Seed: " << seed << '\n';
+  srand(seed);
+}
+
+void change_seed() {
+  cout << "Input your seed: ";
+  int seed;
+  cin >> seed;
+  srand(seed);
+}
+
+void init_game() {
   print_new_game();
-  input_game_type();
+  init_seed();
+  init_game_type();
+  while (game_type == CHANGE_SEED) {
+    change_seed();
+    init_game_type();
+  }
   init_field();
   print_start_position();
 }
@@ -72,7 +95,7 @@ void switch_player() {
 
 bool is_human_moving() { return player == game_type || game_type == 3; }
 
-void run_game_mainloop() {
+void mainloop() {
   player = FIRST_PLAYER;
   while (!is_end()) {
     if (is_human_moving()) {
@@ -86,9 +109,9 @@ void run_game_mainloop() {
 }
 
 void print_result() {
-  if (get_streak() == '.') {
+  if (is_draw()) {
     cout << "Draw.\n";
-  } else if (get_move_type() == 'O') {
+  } else if (is_X()) {
     cout << "First player won.\n";
   } else {
     cout << "Second player won.\n";
@@ -99,13 +122,13 @@ void log_game() {
   if (game_type != GAME_FOR_LOG) {
     return;
   }
-  bool flag = (get_streak() == '.');
+  bool flag = (is_draw());
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < M; ++j) {
       field[i][j] = '.';
     }
   }
-  for (int i = 0; i < history.size(); ++i) {
+  for (int i = 0; i < (int)history.size(); ++i) {
     int shift = get_shift();
     vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
     cur[(history[i][1] - shift + M) % M] +=
@@ -114,9 +137,9 @@ void log_game() {
   }
 }
 
-void run_game() {
-  init_new_game();
-  run_game_mainloop();
+void run() {
+  init_game();
+  mainloop();
   print_result();
   log_game();
 }

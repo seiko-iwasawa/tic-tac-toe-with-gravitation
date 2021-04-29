@@ -17,7 +17,7 @@ signed main() {
   // srand((unsigned int)time(NULL));
   prepare();
   while (true) {
-    run_game();
+    run();
   }
   return 0;
 }

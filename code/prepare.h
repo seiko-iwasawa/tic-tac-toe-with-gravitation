@@ -1,6 +1,5 @@
 #pragma once
 
-vector<int> x_streak_sum, o_streak_sum;
 int streak_number = 0;
 vector<int> streak[N][M];
 

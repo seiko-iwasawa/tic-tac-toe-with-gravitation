@@ -2,23 +2,23 @@
 
 char field[N][M];
 vector<vector<int>> history;
-vector<int> streak_type;
+vector<int> x_streak_sum, o_streak_sum;
 ull X_mask, O_mask;
 int rate_delta;
 bool have_win_streak;
 
 void init_field() {
-  X_mask = O_mask = 0;
-  have_win_streak = false;
-  x_streak_sum.assign(streak_number, 0);
-  o_streak_sum.assign(streak_number, 0);
-  history.clear();
-  rate_delta = 0;
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < M; ++j) {
       field[i][j] = '.';
     }
   }
+  history.clear();
+  x_streak_sum.assign(streak_number, 0);
+  o_streak_sum.assign(streak_number, 0);
+  X_mask = O_mask = 0;
+  rate_delta = 0;
+  have_win_streak = false;
 }
 
 void print_numeration() {
@@ -44,40 +44,20 @@ void print_position() {
 
 bool is_filled() { return history.size() == N * M; }
 
-char get_streak(int i, int j, int dx, int dy) {
-  for (int k = 0; k < WIN_STREAK; ++k) {
-    if (field[(i + k * dx + N) % N][(j + k * dy + M) % M] != field[i][j]) {
-      return '.';
-    }
-  }
-  return field[i][j];
-}
-
-char get_streak(int i, int j) {
-  for (int k = 0; k < 4; ++k) {
-    int streak = get_streak(i, j, DX[k], DY[k]);
-    if (streak != '.') {
-      return streak;
-    }
-  }
-  return '.';
-}
-
 char get_streak() {
-  for (int i = 0; i < N; ++i) {
-    for (int j = 0; j < M; ++j) {
-      char streak = get_streak(i, j);
-      if (streak != '.') {
-        return streak;
-      }
-    }
+  if (*max_element(x_streak_sum.begin(), x_streak_sum.end()) == WIN_STREAK) {
+    return 'X';
+  } else if (*max_element(o_streak_sum.begin(), o_streak_sum.end()) ==
+             WIN_STREAK) {
+    return 'O';
+  } else {
+    return '.';
   }
-  return '.';
 }
 
 bool is_end() { return is_filled() || have_win_streak; }
 
-char get_move_type() { return history.size() & 1 ? 'O' : 'X'; }
+char get_turn_order() { return history.size() & 1 ? 'O' : 'X'; }
 
 const int KEK = 5;
 
@@ -148,11 +128,11 @@ int get_move_place(int j) {
 void move(int j) {
   assert(0 <= j && j <= M - 1);
   int i = get_move_place(j);
-  field[i][j] = get_move_type();
+  field[i][j] = get_turn_order();
   if (field[i][j] == 'X') {
-    X_mask ^= 1LL << i * M + j;
+    X_mask ^= 1LL << (i * M + j);
   } else {
-    O_mask ^= 1LL << i * M + j;
+    O_mask ^= 1LL << (i * M + j);
   }
   add(i, j, 1, field[i][j]);
   history.push_back({i, j});
@@ -163,9 +143,9 @@ void undo() {
   int j = history.back()[1];
   history.pop_back();
   if (field[i][j] == 'X') {
-    X_mask ^= 1LL << i * M + j;
+    X_mask ^= 1LL << (i * M + j);
   } else {
-    O_mask ^= 1LL << i * M + j;
+    O_mask ^= 1LL << (i * M + j);
   }
   add(i, j, -1, field[i][j]);
   field[i][j] = '.';
@@ -174,7 +154,7 @@ void undo() {
 int get_rate() {
   if (is_end()) {
     if (have_win_streak) {
-      if (get_move_type() == 'O') {
+      if (get_turn_order() == 'O') {
         return X_WIN - history.size();
       } else {
         return O_WIN + history.size();
@@ -186,3 +166,11 @@ int get_rate() {
     return DRAW + rate_delta;
   }
 }
+
+char get_result() { return get_streak(); }
+
+bool is_draw() { return get_result() == '.'; }
+
+bool is_X() { return get_result() == 'X'; }
+
+bool is_O() { return get_result() == 'O'; }
