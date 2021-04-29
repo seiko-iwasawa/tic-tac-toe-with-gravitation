@@ -1,7 +1,5 @@
 #pragma once
 
-#include "config.h"
-
 const string DATA_BASE_FILENAME = "data-base.txt";
 
 map<pair<ull, ull>, vector<int>>
