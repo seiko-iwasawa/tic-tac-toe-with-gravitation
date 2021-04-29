@@ -174,8 +174,8 @@ int get_the_best_move() {
   int depth = 6;
   flag_break_cycle = false;
   int start = clock();
-  while (!flag_break_cycle && depth <= N * M - history.size() &&
-         clock() - start <= MAX_REC_TIME) {
+  while (!flag_break_cycle && depth <= N * M - (int)history.size() &&
+         (int)clock() - start <= MAX_REC_TIME) {
     start = clock();
     cout << "CUR IT #" << depth << ":\n";
     j = make_move(depth, good_first_moves);

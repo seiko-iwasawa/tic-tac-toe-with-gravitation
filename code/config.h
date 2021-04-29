@@ -22,9 +22,9 @@ const int DELTA_LOSSES = 0;
 const int DX[4] = {0, +1, +1, +1};
 const int DY[4] = {+1, +1, 0, -1};
 
-const int O_WIN = -1e9;
+const int O_WIN = (int)-1e9;
 const int DRAW = 0;
-const int X_WIN = 1e9;
+const int X_WIN = (int)1e9;
 
 const int FIRST_PLAYER = 1;
 const int SECOND_PLAYER = 2;

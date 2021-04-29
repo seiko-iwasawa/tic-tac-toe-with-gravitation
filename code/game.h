@@ -105,7 +105,7 @@ void log_game() {
       field[i][j] = '.';
     }
   }
-  for (int i = 0; i < history.size(); ++i) {
+  for (int i = 0; i < (int)history.size(); ++i) {
     int shift = get_shift();
     vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
     cur[(history[i][1] - shift + M) % M] +=

@@ -150,9 +150,9 @@ void move(int j) {
   int i = get_move_place(j);
   field[i][j] = get_move_type();
   if (field[i][j] == 'X') {
-    X_mask ^= 1LL << i * M + j;
+    X_mask ^= 1LL << (i * M + j);
   } else {
-    O_mask ^= 1LL << i * M + j;
+    O_mask ^= 1LL << (i * M + j);
   }
   add(i, j, 1, field[i][j]);
   history.push_back({i, j});
@@ -163,9 +163,9 @@ void undo() {
   int j = history.back()[1];
   history.pop_back();
   if (field[i][j] == 'X') {
-    X_mask ^= 1LL << i * M + j;
+    X_mask ^= 1LL << (i * M + j);
   } else {
-    O_mask ^= 1LL << i * M + j;
+    O_mask ^= 1LL << (i * M + j);
   }
   add(i, j, -1, field[i][j]);
   field[i][j] = '.';
