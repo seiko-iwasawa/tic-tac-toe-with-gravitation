@@ -1,7 +1,7 @@
-#pragma once
+#include <prepare.h>
 
 int streak_number = 0;
-vector<int> streak[N][M];
+std::vector<int> streak[N][M];
 
 void build_streak(int i, int j, int dx, int dy) {
   for (int k = 0; k < WIN_STREAK; ++k) {

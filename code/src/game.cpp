@@ -1,21 +1,25 @@
-#pragma once
+#include <ai.h>
+#include <config.h>
+#include <data-base.h>
+#include <field.h>
+#include <game.h>
 
 void computer_move() {
   int j = get_the_best_move();
-  cout << "Computer move: " << j + 1 << '\n';
+  std::cout << "Computer move: " << j + 1 << '\n';
   move(j);
 }
 
 int get_human_move() {
-  cout << "Human move: ";
+  std::cout << "Human move: ";
   int j;
-  cin >> j;
+  std::cin >> j;
   return j - 1;
 }
 
 int get_tip() {
   int j = get_the_best_move();
-  cout << "Tip: " << j + 1 << '\n';
+  std::cout << "Tip: " << j + 1 << '\n';
   return j;
 }
 
@@ -27,7 +31,9 @@ void human_move() {
   move(j);
 }
 
-void print_new_game() { cout << "===NEW GAME===\n"; }
+void print_new_game() {
+  std::cout << "===NEW GAME===\n";
+}
 
 int game_type;
 
@@ -42,8 +48,8 @@ else if game_type == CHANGE_SEED, then you can be able change game seed
 else the computer plays for both players
 */
 void input_game_type() {
-  cout << "Game type: ";
-  cin >> game_type;
+  std::cout << "Game type: ";
+  std::cin >> game_type;
   if (game_type == EXIT) {
     save_data_base();
     exit(0);
@@ -60,18 +66,20 @@ void init_game_type() {
   }
 }
 
-void print_start_position() { print_position(); }
+void print_start_position() {
+  print_position();
+}
 
 void init_seed() {
   unsigned int seed = time(NULL);
-  cout << "Seed: " << seed << '\n';
+  std::cout << "Seed: " << seed << '\n';
   srand(seed);
 }
 
 void change_seed() {
-  cout << "Input your seed: ";
+  std::cout << "Input your seed: ";
   int seed;
-  cin >> seed;
+  std::cin >> seed;
   srand(seed);
 }
 
@@ -93,7 +101,9 @@ void switch_player() {
   player = (player == FIRST_PLAYER ? SECOND_PLAYER : FIRST_PLAYER);
 }
 
-bool is_human_moving() { return player == game_type || game_type == 3; }
+bool is_human_moving() {
+  return player == game_type || game_type == 3;
+}
 
 void mainloop() {
   player = FIRST_PLAYER;
@@ -110,11 +120,11 @@ void mainloop() {
 
 void print_result() {
   if (is_draw()) {
-    cout << "Draw.\n";
+    std::cout << "Draw.\n";
   } else if (is_X()) {
-    cout << "First player won.\n";
+    std::cout << "First player won.\n";
   } else {
-    cout << "Second player won.\n";
+    std::cout << "Second player won.\n";
   }
 }
 
@@ -130,7 +140,7 @@ void log_game() {
   }
   for (int i = 0; i < (int)history.size(); ++i) {
     int shift = get_shift();
-    vector<int> &cur = data_base[{get_maskX(shift), get_maskO(shift)}];
+    std::vector<int>& cur = data_base[{get_maskX(shift), get_maskO(shift)}];
     cur[(history[i][1] - shift + M) % M] +=
         ((history.size() - i) % 2 == 0 || flag);
     field[history[i][0]][history[i][1]] = (i % 2 == 0 ? 'X' : 'O');

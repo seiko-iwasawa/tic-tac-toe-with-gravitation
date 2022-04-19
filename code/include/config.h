@@ -8,8 +8,6 @@
 #include <map>
 #include <vector>
 
-using namespace std;
-
 typedef unsigned long long ull;
 
 const int N = 6;

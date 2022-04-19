@@ -1,8 +1,10 @@
-#pragma once
+#include <config.h>
+#include <field.h>
+#include <prepare.h>
 
 char field[N][M];
-vector<vector<int>> history;
-vector<int> x_streak_sum, o_streak_sum;
+std::vector<std::vector<int>> history;
+std::vector<int> x_streak_sum, o_streak_sum;
 ull X_mask, O_mask;
 int rate_delta;
 bool have_win_streak;
@@ -23,17 +25,17 @@ void init_field() {
 
 void print_numeration() {
   for (int j = 0; j < M; ++j) {
-    cout << j + 1;
+    std::cout << j + 1;
   }
-  cout << '\n';
+  std::cout << '\n';
 }
 
 void print_field() {
   for (int i = 0; i < N; ++i) {
     for (int j = 0; j < M; ++j) {
-      cout << field[i][j];
+      std::cout << field[i][j];
     }
-    cout << '\n';
+    std::cout << '\n';
   }
 }
 
@@ -42,7 +44,9 @@ void print_position() {
   print_field();
 }
 
-bool is_filled() { return history.size() == N * M; }
+bool is_filled() {
+  return history.size() == N * M;
+}
 
 char get_streak() {
   if (*max_element(x_streak_sum.begin(), x_streak_sum.end()) == WIN_STREAK) {
@@ -55,11 +59,13 @@ char get_streak() {
   }
 }
 
-bool is_end() { return is_filled() || have_win_streak; }
+bool is_end() {
+  return is_filled() || have_win_streak;
+}
 
-char get_turn_order() { return history.size() & 1 ? 'O' : 'X'; }
-
-const int KEK = 5;
+char get_turn_order() {
+  return history.size() & 1 ? 'O' : 'X';
+}
 
 void add(int i, int j, int d, char move) {
   if (move == 'X') {
@@ -167,10 +173,18 @@ int get_rate() {
   }
 }
 
-char get_result() { return get_streak(); }
+char get_result() {
+  return get_streak();
+}
 
-bool is_draw() { return get_result() == '.'; }
+bool is_draw() {
+  return get_result() == '.';
+}
 
-bool is_X() { return get_result() == 'X'; }
+bool is_X() {
+  return get_result() == 'X';
+}
 
-bool is_O() { return get_result() == 'O'; }
+bool is_O() {
+  return get_result() == 'O';
+}

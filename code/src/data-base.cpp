@@ -1,14 +1,12 @@
-#pragma once
+#include <config.h>
+#include <data-base.h>
 
-const string DATA_BASE_FILENAME = "data-base.txt";
+std::map<std::pair<ull, ull>, std::vector<int>> data_base;
 
-map<pair<ull, ull>, vector<int>>
-    data_base;  // stores the number of losses for each move in the position
-
-void load_data_position(ifstream &fin) {
+void load_data_position(std::ifstream& fin) {
   ull X_mask, O_mask;
   fin >> X_mask >> O_mask;
-  vector<int> losses(M);
+  std::vector<int> losses(M);
   for (int i = 0; i < M; ++i) {
     fin >> losses[i];
   }
@@ -16,15 +14,15 @@ void load_data_position(ifstream &fin) {
 }
 
 void load_data_base() {
-  ifstream fin(DATA_BASE_FILENAME);
+  std::ifstream fin(DATA_BASE_FILENAME);
   while (!fin.eof()) {
     load_data_position(fin);
   }
   fin.close();
 }
 
-void save_data_position(ofstream &fout,
-                        pair<pair<ull, ull>, vector<int>> data) {
+void save_data_position(std::ofstream& fout,
+                        std::pair<std::pair<ull, ull>, std::vector<int>> data) {
   fout << data.first.first << ' ' << data.first.second << ' ';
   for (auto x : data.second) {
     fout << x << ' ';
@@ -33,7 +31,7 @@ void save_data_position(ofstream &fout,
 }
 
 void save_data_base() {
-  ofstream fout("new-" + DATA_BASE_FILENAME);
+  std::ofstream fout("new-" + DATA_BASE_FILENAME);
   for (auto e : data_base) {
     save_data_position(fout, e);
   }
