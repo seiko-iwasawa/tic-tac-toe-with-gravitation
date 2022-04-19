@@ -11,7 +11,7 @@ void human_move();
 void print_new_game();
 
 /*
-if game_type == FRIST_PLAYER, then the human plays for first player
+if game_type == FIRST_PLAYER, then the human plays for first player
 else if game_type == SECOND_PLAYER, then the human plays for second player
 else if game_type == BOTH_PLAYERS, then the human plays for both players
 else if game_type == GAME_FOR_LOG, then the computer plays for both players
