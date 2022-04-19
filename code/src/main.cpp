@@ -3,9 +3,8 @@
 #include "prepare.h"
 
 signed main() {
-  std::ios_base::sync_with_stdio(false);
-  std::cin.tie(NULL);
-  std::cout.tie(NULL);
+  std::cout << std::unitbuf;  // Enables automatic flushing of the output stream
+                              // after any output operation.
   // srand((unsigned int)time(NULL));
   prepare();
   while (true) {
