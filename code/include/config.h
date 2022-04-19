@@ -14,7 +14,7 @@ const int N = 6;
 const int M = 7;
 const int WIN_STREAK = 4;
 const int PREGAMES = 0;
-const int MAX_REC_TIME = 1000;
+const double MAX_REC_TIME = 1 * CLOCKS_PER_SEC;
 const int DELTA_LOSSES = 0;
 
 const int DX[4] = {0, +1, +1, +1};
