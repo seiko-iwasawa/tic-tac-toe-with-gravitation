@@ -9,9 +9,6 @@ obj/:
 obj/ai.o: include/ai.h src/ai.cpp | obj/
 	$(CC) $(CFLAGS) src/ai.cpp -o $@
 
-obj/config.o: include/config.h src/config.cpp | obj/
-	$(CC) $(CFLAGS) src/config.cpp -o $@
-
 obj/data-base.o: include/data-base.h src/data-base.cpp | obj/
 	$(CC) $(CFLAGS) src/data-base.cpp -o $@
 
@@ -27,7 +24,7 @@ obj/prepare.o: include/prepare.h src/prepare.cpp | obj/
 obj/main.o: src/main.cpp | obj/
 	$(CC) $(CFLAGS) src/main.cpp -o $@
 
-tic-tac-toe: obj/ai.o obj/config.o obj/data-base.o obj/field.o obj/game.o obj/prepare.o obj/main.o
+tic-tac-toe: obj/ai.o obj/data-base.o obj/field.o obj/game.o obj/prepare.o obj/main.o
 	$(CC) $^ -o $@
 
 clean:
